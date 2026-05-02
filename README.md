@@ -12,6 +12,9 @@ A Model Context Protocol (MCP) server for advanced audio transcription and proce
 
 </div>
 
+> [!WARNING]
+> **This project has moved.** Active development has migrated to **[TJC-LP/sanzaru](https://github.com/TJC-LP/sanzaru)**. This repository is no longer maintained and will be archived. Please update your dependencies and issues to the new repo.
+
 ## Overview
 
 MCP Server Whisper provides a standardized way to process audio files through OpenAI's latest transcription and speech services. By implementing the [Model Context Protocol](https://modelcontextprotocol.io/), it enables AI assistants like Claude to seamlessly interact with audio processing capabilities.
