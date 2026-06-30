@@ -1,0 +1,22 @@
+{
+  "$schema": "https://gofastmcp.com/public/schemas/fastmcp.json/v1.json",
+  "source": {
+    "type": "filesystem",
+    "path": "src/mcp_server_whisper/server.py",
+    "entrypoint": "mcp"
+  },
+  "environment": {
+    "type": "uv",
+    "python": ">=3.10",
+    "dependencies": [
+      "fastmcp>=2.0.0",
+      "openai>=2.4.0",
+      "pydub",
+      "aiofiles",
+      "pydantic-settings>=2.11.0"
+    ]
+  },
+  "deployment": {
+    "transport": "stdio"
+  }
+}

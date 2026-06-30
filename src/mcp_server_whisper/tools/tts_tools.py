@@ -2,11 +2,11 @@
 
 from typing import Optional
 
+from fastmcp import Context
 from openai.types.audio.speech_model import SpeechModel
 
-from ..config import check_and_get_audio_path
 from ..constants import TTSVoice
-from ..infrastructure import FileSystemRepository, MCPServer, OpenAIClientWrapper, SecurePathResolver
+from ..infrastructure import MCPServer
 from ..models import TTSResult
 from ..services import TTSService
 
@@ -19,15 +19,10 @@ def create_tts_tools(mcp: MCPServer) -> None:
         mcp: FastMCP server instance.
 
     """
-    # Initialize services
-    audio_path = check_and_get_audio_path()
-    file_repo = FileSystemRepository(audio_path)
-    openai_client = OpenAIClientWrapper()
-    path_resolver = SecurePathResolver(audio_path)
-    tts_service = TTSService(file_repo, openai_client, path_resolver)
 
     @mcp.tool(description="Create text-to-speech audio using OpenAI's TTS API with model and voice selection.")
     async def create_audio(
+        ctx: Context,
         text_prompt: str,
         model: SpeechModel = "gpt-4o-mini-tts",
         voice: TTSVoice = "alloy",
@@ -38,6 +33,7 @@ def create_tts_tools(mcp: MCPServer) -> None:
         """Generate text-to-speech audio from text prompts with customizable voices.
 
         Args:
+            ctx: FastMCP context providing access to shared services
             text_prompt: Text to convert to speech
             model: TTS model to use (gpt-4o-mini-tts is preferred)
             voice: Voice for the TTS (alloy, ash, coral, echo, fable, onyx, nova, sage, shimmer)
@@ -55,6 +51,7 @@ def create_tts_tools(mcp: MCPServer) -> None:
         concatenating the audio. OpenAI's TTS API has a limit of 4096 characters per request.
 
         """
+        tts_service: TTSService = ctx.lifespan_context["tts_service"]
         return await tts_service.create_speech(
             text_prompt=text_prompt,
             output_filename=output_file_name,

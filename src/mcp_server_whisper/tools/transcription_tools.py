@@ -2,11 +2,11 @@
 
 from typing import Literal, Optional
 
+from fastmcp import Context
 from openai.types import AudioModel, AudioResponseFormat
 
-from ..config import check_and_get_audio_path
 from ..constants import ENHANCEMENT_PROMPTS, AudioChatModel, EnhancementType
-from ..infrastructure import FileSystemRepository, MCPServer, OpenAIClientWrapper, SecurePathResolver
+from ..infrastructure import MCPServer
 from ..models import ChatResult, TranscriptionResult
 from ..services import TranscriptionService
 
@@ -19,12 +19,6 @@ def create_transcription_tools(mcp: MCPServer) -> None:
         mcp: FastMCP server instance.
 
     """
-    # Initialize services
-    audio_path = check_and_get_audio_path()
-    file_repo = FileSystemRepository(audio_path)
-    openai_client = OpenAIClientWrapper()
-    path_resolver = SecurePathResolver(audio_path)
-    transcription_service = TranscriptionService(file_repo, openai_client, path_resolver)
 
     @mcp.tool(
         description=(
@@ -36,6 +30,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
         )
     )
     async def transcribe_audio(
+        ctx: Context,
         input_file_name: str,
         model: AudioModel = "gpt-4o-mini-transcribe",
         response_format: AudioResponseFormat = "text",
@@ -45,6 +40,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
         """Transcribe audio using OpenAI's transcribe API.
 
         Args:
+            ctx: FastMCP context providing access to shared services
             input_file_name: Name of the input audio file to process
             model: The transcription model to use
             response_format: The response format (text, json, verbose_json, etc.)
@@ -56,6 +52,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
             TranscriptionResult with transcribed text and metadata
 
         """
+        transcription_service: TranscriptionService = ctx.lifespan_context["transcription_service"]
         return await transcription_service.transcribe_audio(
             filename=input_file_name,
             model=model,
@@ -72,6 +69,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
         )
     )
     async def chat_with_audio(
+        ctx: Context,
         input_file_name: str,
         model: AudioChatModel = "gpt-4o-audio-preview",
         system_prompt: Optional[str] = None,
@@ -80,6 +78,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
         """Chat with audio using GPT-4o audio models.
 
         Args:
+            ctx: FastMCP context providing access to shared services
             input_file_name: Name of the input audio file to process
             model: The audio LLM model to use for transcription
             system_prompt: Optional system prompt
@@ -90,6 +89,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
             ChatResult with the response text
 
         """
+        transcription_service: TranscriptionService = ctx.lifespan_context["transcription_service"]
         return await transcription_service.chat_with_audio(
             filename=input_file_name,
             model=model,
@@ -99,6 +99,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
 
     @mcp.tool()
     async def transcribe_with_enhancement(
+        ctx: Context,
         input_file_name: str,
         enhancement_type: EnhancementType = "detailed",
         model: AudioModel = "gpt-4o-mini-transcribe",
@@ -114,6 +115,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
         - analytical: Includes analysis of speech patterns, key points, and structure
 
         Args:
+            ctx: FastMCP context providing access to shared services
             input_file_name: Name of the input audio file to process
             enhancement_type: Type of enhancement to apply to the transcription
             model: The transcription model to use
@@ -125,10 +127,8 @@ def create_transcription_tools(mcp: MCPServer) -> None:
             TranscriptionResult with enhanced transcription
 
         """
-        # Get the enhancement prompt
+        transcription_service: TranscriptionService = ctx.lifespan_context["transcription_service"]
         prompt = ENHANCEMENT_PROMPTS[enhancement_type]
-
-        # Call transcribe_audio with the enhancement prompt
         return await transcription_service.transcribe_audio(
             filename=input_file_name,
             model=model,

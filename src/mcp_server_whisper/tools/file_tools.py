@@ -2,9 +2,10 @@
 
 from typing import Optional
 
-from ..config import check_and_get_audio_path
+from fastmcp import Context
+
 from ..constants import SortBy
-from ..infrastructure import FileSystemRepository, MCPServer
+from ..infrastructure import MCPServer
 from ..models import FilePathSupportParams
 from ..services import FileService
 
@@ -17,16 +18,12 @@ def create_file_tools(mcp: MCPServer) -> None:
         mcp: FastMCP server instance.
 
     """
-    # Initialize services
-    audio_path = check_and_get_audio_path()
-    file_repo = FileSystemRepository(audio_path)
-    file_service = FileService(file_repo)
 
     @mcp.tool(
         description="Get the most recent audio file from the audio path. "
         "ONLY USE THIS IF THE USER ASKS FOR THE LATEST FILE."
     )
-    async def get_latest_audio() -> FilePathSupportParams:
+    async def get_latest_audio(ctx: Context) -> FilePathSupportParams:
         """Get the most recently modified audio file and returns its path with model support info.
 
         Supported formats:
@@ -35,6 +32,7 @@ def create_file_tools(mcp: MCPServer) -> None:
 
         Returns detailed file information including size, format, and duration.
         """
+        file_service: FileService = ctx.lifespan_context["file_service"]
         return await file_service.get_latest_audio_file()
 
     @mcp.tool(
@@ -42,6 +40,7 @@ def create_file_tools(mcp: MCPServer) -> None:
         "filtering by metadata (size, duration, date, format), and sorting."
     )
     async def list_audio_files(
+        ctx: Context,
         pattern: Optional[str] = None,
         min_size_bytes: Optional[int] = None,
         max_size_bytes: Optional[int] = None,
@@ -72,6 +71,7 @@ def create_file_tools(mcp: MCPServer) -> None:
 
         Returns detailed file information including size, format, duration, and transcription capabilities.
         """
+        file_service: FileService = ctx.lifespan_context["file_service"]
         return await file_service.list_audio_files(
             pattern=pattern,
             min_size_bytes=min_size_bytes,

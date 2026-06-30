@@ -8,7 +8,7 @@ class MCPServer(Protocol):
 
     This protocol defines the interface that MCP servers must implement
     for tool registration. It allows for type-safe tool definitions while
-    remaining decoupled from specific MCP implementations.
+    remaining decoupled from specific MCP implementations (e.g. FastMCP).
     """
 
     def tool(
@@ -19,6 +19,7 @@ class MCPServer(Protocol):
         annotations: Any = None,
         icons: Any = None,
         structured_output: bool | None = None,
+        tags: set[str] | None = None,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register a tool with the MCP server.
 
@@ -30,6 +31,7 @@ class MCPServer(Protocol):
             annotations: Optional tool annotations.
             icons: Optional tool icons.
             structured_output: Optional structured output flag.
+            tags: Optional set of tags for the tool.
 
         Returns:
         -------
