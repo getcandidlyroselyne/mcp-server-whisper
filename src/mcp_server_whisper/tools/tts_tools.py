@@ -9,6 +9,7 @@ from ..constants import TTSVoice
 from ..infrastructure import MCPServer
 from ..models import TTSResult
 from ..services import TTSService
+from . import require_service
 
 
 def create_tts_tools(mcp: MCPServer) -> None:
@@ -51,7 +52,7 @@ def create_tts_tools(mcp: MCPServer) -> None:
         concatenating the audio. OpenAI's TTS API has a limit of 4096 characters per request.
 
         """
-        tts_service: TTSService = ctx.lifespan_context["tts_service"]
+        tts_service: TTSService = require_service(ctx, "tts_service")  # type: ignore[assignment]
         return await tts_service.create_speech(
             text_prompt=text_prompt,
             output_filename=output_file_name,

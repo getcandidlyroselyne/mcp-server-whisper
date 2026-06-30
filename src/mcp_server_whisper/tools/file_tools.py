@@ -8,6 +8,7 @@ from ..constants import SortBy
 from ..infrastructure import MCPServer
 from ..models import FilePathSupportParams
 from ..services import FileService
+from . import require_service
 
 
 def create_file_tools(mcp: MCPServer) -> None:
@@ -32,7 +33,7 @@ def create_file_tools(mcp: MCPServer) -> None:
 
         Returns detailed file information including size, format, and duration.
         """
-        file_service: FileService = ctx.lifespan_context["file_service"]
+        file_service: FileService = require_service(ctx, "file_service")  # type: ignore[assignment]
         return await file_service.get_latest_audio_file()
 
     @mcp.tool(
@@ -71,7 +72,7 @@ def create_file_tools(mcp: MCPServer) -> None:
 
         Returns detailed file information including size, format, duration, and transcription capabilities.
         """
-        file_service: FileService = ctx.lifespan_context["file_service"]
+        file_service: FileService = require_service(ctx, "file_service")  # type: ignore[assignment]
         return await file_service.list_audio_files(
             pattern=pattern,
             min_size_bytes=min_size_bytes,

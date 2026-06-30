@@ -9,6 +9,7 @@ from ..constants import ENHANCEMENT_PROMPTS, AudioChatModel, EnhancementType
 from ..infrastructure import MCPServer
 from ..models import ChatResult, TranscriptionResult
 from ..services import TranscriptionService
+from . import require_service
 
 
 def create_transcription_tools(mcp: MCPServer) -> None:
@@ -52,7 +53,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
             TranscriptionResult with transcribed text and metadata
 
         """
-        transcription_service: TranscriptionService = ctx.lifespan_context["transcription_service"]
+        transcription_service: TranscriptionService = require_service(ctx, "transcription_service")  # type: ignore[assignment]
         return await transcription_service.transcribe_audio(
             filename=input_file_name,
             model=model,
@@ -89,7 +90,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
             ChatResult with the response text
 
         """
-        transcription_service: TranscriptionService = ctx.lifespan_context["transcription_service"]
+        transcription_service: TranscriptionService = require_service(ctx, "transcription_service")  # type: ignore[assignment]
         return await transcription_service.chat_with_audio(
             filename=input_file_name,
             model=model,
@@ -127,7 +128,7 @@ def create_transcription_tools(mcp: MCPServer) -> None:
             TranscriptionResult with enhanced transcription
 
         """
-        transcription_service: TranscriptionService = ctx.lifespan_context["transcription_service"]
+        transcription_service: TranscriptionService = require_service(ctx, "transcription_service")  # type: ignore[assignment]
         prompt = ENHANCEMENT_PROMPTS[enhancement_type]
         return await transcription_service.transcribe_audio(
             filename=input_file_name,

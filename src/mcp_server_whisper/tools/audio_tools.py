@@ -8,6 +8,7 @@ from ..constants import DEFAULT_MAX_FILE_SIZE_MB, SupportedChatWithAudioFormat
 from ..infrastructure import MCPServer
 from ..models import AudioProcessingResult
 from ..services import AudioService
+from . import require_service
 
 
 def create_audio_tools(mcp: MCPServer) -> None:
@@ -40,7 +41,7 @@ def create_audio_tools(mcp: MCPServer) -> None:
             AudioProcessingResult with name of the converted audio file
 
         """
-        audio_service: AudioService = ctx.lifespan_context["audio_service"]
+        audio_service: AudioService = require_service(ctx, "audio_service")  # type: ignore[assignment]
         try:
             return await audio_service.convert_audio(
                 input_filename=input_file_name,
@@ -74,7 +75,7 @@ def create_audio_tools(mcp: MCPServer) -> None:
             AudioProcessingResult with name of the compressed audio file (or original if no compression needed)
 
         """
-        audio_service: AudioService = ctx.lifespan_context["audio_service"]
+        audio_service: AudioService = require_service(ctx, "audio_service")  # type: ignore[assignment]
         try:
             return await audio_service.compress_audio(
                 input_filename=input_file_name,

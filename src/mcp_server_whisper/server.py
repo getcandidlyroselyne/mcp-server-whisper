@@ -15,20 +15,29 @@ from mcp_server_whisper.tools import register_all_tools
 
 @asynccontextmanager
 async def lifespan(server: FastMCP):
-    """Initialize and tear down shared services for the lifetime of the server."""
-    config = get_config()
-    audio_path = config.audio_files_path
+    """Initialize and tear down shared services for the lifetime of the server.
 
-    file_repo = FileSystemRepository(audio_path)
-    openai_client = OpenAIClientWrapper(api_key=config.openai_api_key)
-    path_resolver = SecurePathResolver(audio_path)
+    If configuration is missing or invalid the server still starts; individual
+    tool calls will raise a descriptive error in that case.
+    """
+    try:
+        config = get_config()
+        audio_path = config.audio_files_path
 
-    yield {
-        "file_service": FileService(file_repo),
-        "audio_service": AudioService(file_repo, path_resolver),
-        "transcription_service": TranscriptionService(file_repo, openai_client, path_resolver),
-        "tts_service": TTSService(file_repo, openai_client, path_resolver),
-    }
+        file_repo = FileSystemRepository(audio_path)
+        openai_client = OpenAIClientWrapper(api_key=config.openai_api_key)
+        path_resolver = SecurePathResolver(audio_path)
+
+        yield {
+            "file_service": FileService(file_repo),
+            "audio_service": AudioService(file_repo, path_resolver),
+            "transcription_service": TranscriptionService(file_repo, openai_client, path_resolver),
+            "tts_service": TTSService(file_repo, openai_client, path_resolver),
+        }
+    except Exception as e:
+        # Server starts successfully so the MCP handshake works; tools will
+        # surface this error when called without valid configuration.
+        yield {"_config_error": str(e)}
 
 
 mcp = FastMCP("whisper", lifespan=lifespan)
