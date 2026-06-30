@@ -8,7 +8,7 @@ from ..constants import DEFAULT_MAX_FILE_SIZE_MB, SupportedChatWithAudioFormat
 from ..infrastructure import MCPServer
 from ..models import AudioProcessingResult
 from ..services import AudioService
-from . import require_service
+from ._utils import require_service
 
 
 def create_audio_tools(mcp: MCPServer) -> None:

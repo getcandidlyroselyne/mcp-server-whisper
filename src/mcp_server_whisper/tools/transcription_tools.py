@@ -9,7 +9,7 @@ from ..constants import ENHANCEMENT_PROMPTS, AudioChatModel, EnhancementType
 from ..infrastructure import MCPServer
 from ..models import ChatResult, TranscriptionResult
 from ..services import TranscriptionService
-from . import require_service
+from ._utils import require_service
 
 
 def create_transcription_tools(mcp: MCPServer) -> None:

@@ -8,7 +8,7 @@ from ..constants import SortBy
 from ..infrastructure import MCPServer
 from ..models import FilePathSupportParams
 from ..services import FileService
-from . import require_service
+from ._utils import require_service
 
 
 def create_file_tools(mcp: MCPServer) -> None:

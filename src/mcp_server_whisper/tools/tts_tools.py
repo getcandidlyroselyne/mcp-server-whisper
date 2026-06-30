@@ -9,7 +9,7 @@ from ..constants import TTSVoice
 from ..infrastructure import MCPServer
 from ..models import TTSResult
 from ..services import TTSService
-from . import require_service
+from ._utils import require_service
 
 
 def create_tts_tools(mcp: MCPServer) -> None:
