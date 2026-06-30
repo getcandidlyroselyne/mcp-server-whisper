@@ -4,9 +4,13 @@ from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
 
-from .config import get_config
-from .infrastructure import FileSystemRepository, OpenAIClientWrapper, SecurePathResolver
-from .services import AudioService, FileService, TranscriptionService, TTSService
+# Absolute imports are required here because fastmcp inspect loads this file
+# directly (not as part of the package), so relative imports would fail.
+# The package is installed via uv sync, so absolute imports resolve correctly.
+from mcp_server_whisper.config import get_config
+from mcp_server_whisper.infrastructure import FileSystemRepository, OpenAIClientWrapper, SecurePathResolver
+from mcp_server_whisper.services import AudioService, FileService, TranscriptionService, TTSService
+from mcp_server_whisper.tools import register_all_tools
 
 
 @asynccontextmanager
@@ -29,12 +33,12 @@ async def lifespan(server: FastMCP):
 
 mcp = FastMCP("whisper", dependencies=["openai", "pydub", "aiofiles"], lifespan=lifespan)
 
+# Register tools at module level so fastmcp inspect can discover all tools.
+register_all_tools(mcp)
+
 
 def main() -> None:
     """Run main entrypoint."""
-    from .tools import register_all_tools
-
-    register_all_tools(mcp)
     mcp.run()
 
 
