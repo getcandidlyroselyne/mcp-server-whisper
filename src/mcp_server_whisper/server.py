@@ -31,7 +31,7 @@ async def lifespan(server: FastMCP):
     }
 
 
-mcp = FastMCP("whisper", dependencies=["openai", "pydub", "aiofiles"], lifespan=lifespan)
+mcp = FastMCP("whisper", lifespan=lifespan)
 
 # Register tools at module level so fastmcp inspect can discover all tools.
 register_all_tools(mcp)
