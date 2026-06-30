@@ -8,7 +8,13 @@ from fastmcp import FastMCP
 # directly (not as part of the package), so relative imports would fail.
 # The package is installed via uv sync, so absolute imports resolve correctly.
 from mcp_server_whisper.config import get_config
-from mcp_server_whisper.infrastructure import FileSystemRepository, OpenAIClientWrapper, SecurePathResolver
+from mcp_server_whisper.infrastructure import (
+    FileSystemRepository,
+    GCSPathResolver,
+    GCSStorageRepository,
+    OpenAIClientWrapper,
+    SecurePathResolver,
+)
 from mcp_server_whisper.services import AudioService, FileService, TranscriptionService, TTSService
 from mcp_server_whisper.tools import register_all_tools
 
@@ -22,11 +28,21 @@ async def lifespan(server: FastMCP):
     """
     try:
         config = get_config()
-        audio_path = config.audio_files_path
-
-        file_repo = FileSystemRepository(audio_path)
         openai_client = OpenAIClientWrapper(api_key=config.openai_api_key)
-        path_resolver = SecurePathResolver(audio_path)
+
+        if config.use_gcs:
+            # Google Cloud Storage backend
+            file_repo = GCSStorageRepository(
+                bucket_name=config.gcs_bucket,  # type: ignore[arg-type]
+                prefix=config.gcs_prefix,
+                service_account_json=config.gcs_service_account_json,
+            )
+            path_resolver = GCSPathResolver(prefix=config.gcs_prefix)
+        else:
+            # Local filesystem backend
+            audio_path = config.audio_files_path  # type: ignore[arg-type]
+            file_repo = FileSystemRepository(audio_path)
+            path_resolver = SecurePathResolver(audio_path)
 
         yield {
             "file_service": FileService(file_repo),

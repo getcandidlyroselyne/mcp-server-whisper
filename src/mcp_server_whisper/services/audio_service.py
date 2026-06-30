@@ -1,23 +1,28 @@
 """Audio processing service - orchestrates domain and infrastructure."""
 
+import tempfile
 from pathlib import Path
+from typing import Union
 
 from ..constants import DEFAULT_MAX_FILE_SIZE_MB, SupportedChatWithAudioFormat
 from ..domain import AudioProcessor
-from ..infrastructure import FileSystemRepository, SecurePathResolver
+from ..infrastructure import FileSystemRepository, GCSPathResolver, GCSStorageRepository, SecurePathResolver
 from ..models import AudioProcessingResult
+
+StorageRepo = Union[FileSystemRepository, GCSStorageRepository]
+PathResolver = Union[SecurePathResolver, GCSPathResolver]
 
 
 class AudioService:
     """Service for audio conversion and compression operations."""
 
-    def __init__(self, file_repo: FileSystemRepository, path_resolver: SecurePathResolver):
+    def __init__(self, file_repo: StorageRepo, path_resolver: PathResolver):
         """Initialize the audio service.
 
         Args:
         ----
-            file_repo: File system repository for I/O operations.
-            path_resolver: Secure path resolver for filename to path conversion.
+            file_repo: Storage repository for I/O operations (local or GCS).
+            path_resolver: Path resolver for filename-to-key conversion.
 
         """
         self.file_repo = file_repo
@@ -43,29 +48,24 @@ class AudioService:
             AudioProcessingResult: Result with name of the converted audio file.
 
         """
-        # Resolve input filename to path
-        input_file = self.path_resolver.resolve_input(input_filename)
-
-        # Determine output path
-        if output_filename is None:
-            output_name = Path(input_filename).stem + f".{target_format}"
-        else:
-            output_name = output_filename
+        input_path = self.path_resolver.resolve_input(input_filename)
+        output_name = output_filename or f"{Path(input_filename).stem}.{target_format}"
         output_path = self.path_resolver.resolve_output(output_name, f"{Path(input_filename).stem}.{target_format}")
 
-        # Load audio
-        audio_data = await self.processor.load_audio_from_path(input_file)
+        # Download bytes then load from in-memory buffer (works for both local and GCS)
+        audio_bytes = await self.file_repo.read_audio_file(input_path)
+        fmt = input_path.suffix[1:] if input_path.suffix else target_format
+        audio_data = await self.processor.load_audio_from_bytes(audio_bytes, fmt)
 
-        # Convert format
-        converted_bytes = await self.processor.convert_audio_format(
-            audio_data=audio_data,
-            target_format=target_format,
-            output_path=output_path,
-        )
+        # pydub requires a real filesystem path for export; use a temp file
+        with tempfile.NamedTemporaryFile(suffix=f".{target_format}", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            converted_bytes = await self.processor.convert_audio_format(audio_data, target_format, tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
-        # Write converted file
         await self.file_repo.write_audio_file(output_path, converted_bytes)
-
         return AudioProcessingResult(output_file=output_path.name)
 
     async def compress_audio(
@@ -87,45 +87,40 @@ class AudioService:
             AudioProcessingResult: Result with name of the compressed audio file (or original if no compression needed).
 
         """
-        # Resolve input filename to path
-        input_file = self.path_resolver.resolve_input(input_filename)
-
-        # Check if compression is needed
-        file_size = await self.file_repo.get_file_size(input_file)
+        input_path = self.path_resolver.resolve_input(input_filename)
+        file_size = await self.file_repo.get_file_size(input_path)
         needs_compression = self.processor.calculate_compression_needed(file_size, max_mb)
 
         if not needs_compression:
-            return AudioProcessingResult(output_file=input_filename)  # No compression needed
+            return AudioProcessingResult(output_file=input_filename)
 
         print(f"\n[AudioService] File '{input_filename}' size > {max_mb}MB. Attempting compression...")
 
-        # Convert to MP3 if not already
-        if input_file.suffix.lower() != ".mp3":
+        # Convert to MP3 first if needed
+        if input_path.suffix.lower() != ".mp3":
             print("[AudioService] Converting to MP3 first...")
             conversion_result = await self.convert_audio(input_filename, None, "mp3")
-            # Update input to use the converted file
             input_filename = conversion_result.output_file
-            input_file = self.path_resolver.resolve_input(input_filename)
+            input_path = self.path_resolver.resolve_input(input_filename)
 
-        # Determine output path
-        if output_filename is None:
-            output_name = f"compressed_{input_file.stem}.mp3"
-        else:
-            output_name = output_filename
-        output_path = self.path_resolver.resolve_output(output_name, f"compressed_{input_file.stem}.mp3")
+        output_name = output_filename or f"compressed_{input_path.stem}.mp3"
+        output_path = self.path_resolver.resolve_output(output_name, f"compressed_{input_path.stem}.mp3")
 
         print(f"[AudioService] Original file: {input_filename}")
         print(f"[AudioService] Output file: {output_name}")
 
-        # Load and compress
-        audio_data = await self.processor.load_audio_from_path(input_file)
-        compressed_bytes = await self.processor.compress_mp3(audio_data, output_path)
+        audio_bytes = await self.file_repo.read_audio_file(input_path)
+        audio_data = await self.processor.load_audio_from_bytes(audio_bytes, "mp3")
 
-        # Write compressed file
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            compressed_bytes = await self.processor.compress_mp3(audio_data, tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
         await self.file_repo.write_audio_file(output_path, compressed_bytes)
-
         print(f"[AudioService] Compressed file size: {len(compressed_bytes)} bytes")
-
         return AudioProcessingResult(output_file=output_path.name)
 
     async def maybe_compress_file(

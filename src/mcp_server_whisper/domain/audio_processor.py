@@ -122,6 +122,32 @@ class AudioProcessor:
             raise AudioConversionError(f"Failed to load audio file {file_path}: {e}") from e
 
     @staticmethod
+    async def load_audio_from_bytes(data: bytes, format_str: str) -> AudioSegment:
+        """Load audio bytes into an AudioSegment without touching the filesystem.
+
+        Args:
+        ----
+            data: Raw audio file content.
+            format_str: Audio format (e.g. ``"mp3"``, ``"wav"``).
+
+        Returns:
+        -------
+            AudioSegment: Loaded audio segment.
+
+        Raises:
+        ------
+            AudioConversionError: If loading fails.
+
+        """
+        from io import BytesIO
+
+        try:
+            buf = BytesIO(data)
+            return await anyio.to_thread.run_sync(lambda: AudioSegment.from_file(buf, format=format_str))
+        except Exception as e:
+            raise AudioConversionError(f"Failed to load audio from bytes ({format_str}): {e}") from e
+
+    @staticmethod
     def calculate_compression_needed(
         file_size_bytes: int,
         max_mb: int = DEFAULT_MAX_FILE_SIZE_MB,

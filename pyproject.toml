@@ -13,6 +13,7 @@ dependencies = [
     "dotenv",
     "fastmcp>=2.0.0",
     "ffmpeg-python",
+    "google-cloud-storage>=2.0.0",
     "mcp>=1.17.0",
     "openai>=2.4.0",
     "pydantic-settings>=2.11.0",

@@ -1,4 +1,4 @@
-"""Secure path resolver for filesystem operations."""
+"""Path resolvers for local filesystem and GCS storage backends."""
 
 from pathlib import Path
 
@@ -91,4 +91,66 @@ class SecurePathResolver:
             str: Just the filename without directory components.
 
         """
+        return path.name
+
+
+class GCSPathResolver:
+    """Resolves filenames to GCS object-key paths.
+
+    Works like :class:`SecurePathResolver` but targets a GCS bucket prefix
+    rather than the local filesystem.  The returned ``Path`` objects are *not*
+    real filesystem paths — their string representation is the GCS object key.
+
+    Args:
+    ----
+        prefix: Prefix prepended to every resolved key (e.g. ``"recordings/"``).
+
+    """
+
+    def __init__(self, prefix: str = "") -> None:
+        """Initialise the resolver with an optional key prefix.
+
+        Args:
+        ----
+            prefix: Object-key prefix prepended to every resolved filename
+                (e.g. ``"recordings/"``).  Leading/trailing slashes are
+                normalised automatically.
+
+        """
+        self.prefix = prefix.rstrip("/") + "/" if prefix.strip("/") else ""
+
+    def resolve_input(self, filename: str) -> Path:
+        """Resolve a filename to a GCS object-key path.
+
+        Args:
+        ----
+            filename: Bare filename (directory components are stripped).
+
+        Returns:
+        -------
+            Path representing the GCS object key.
+
+        """
+        safe_filename = Path(filename).name
+        return Path(f"{self.prefix}{safe_filename}")
+
+    def resolve_output(self, filename: str | None, default: str) -> Path:
+        """Resolve an output filename to a GCS object-key path.
+
+        Args:
+        ----
+            filename: Optional custom name; falls back to *default*.
+            default: Default filename when *filename* is ``None``.
+
+        Returns:
+        -------
+            Path representing the GCS object key.
+
+        """
+        name = filename or default
+        safe_filename = Path(name).name
+        return Path(f"{self.prefix}{safe_filename}")
+
+    def get_relative_name(self, path: Path) -> str:
+        """Return the bare filename component of an object-key path."""
         return path.name

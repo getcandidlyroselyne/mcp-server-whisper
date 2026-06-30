@@ -1,21 +1,23 @@
 """File discovery and management service."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import anyio
 from aioresult import ResultCapture
 
 from ..constants import SortBy
 from ..domain import FileFilterSorter
-from ..infrastructure import FileSystemRepository, get_cached_audio_file_support
+from ..infrastructure import FileSystemRepository, GCSStorageRepository, get_cached_audio_file_support
 from ..models import FilePathSupportParams
+
+StorageRepo = Union[FileSystemRepository, GCSStorageRepository]
 
 
 class FileService:
     """Service for file discovery, filtering, and sorting operations."""
 
-    def __init__(self, file_repo: FileSystemRepository):
+    def __init__(self, file_repo: StorageRepo):
         """Initialize the file service.
 
         Args:
@@ -80,7 +82,7 @@ class FileService:
         # Step 2: Get metadata for all files in parallel (with caching)
         async def get_support(path: Path) -> FilePathSupportParams:
             path_str = str(path)
-            mtime = path.stat().st_mtime
+            mtime = self.file_repo.get_file_mtime(path)
             return await get_cached_audio_file_support(
                 path_str,
                 mtime,

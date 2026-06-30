@@ -221,6 +221,23 @@ class FileSystemRepository:
         except Exception as e:
             raise AudioFileError(f"Failed to write audio file '{file_path}': {e}") from e
 
+    def get_file_mtime(self, path: Path) -> float:
+        """Return the last-modified time of a file as a UTC epoch float.
+
+        Args:
+        ----
+            path: Path to the file.
+
+        Returns:
+        -------
+            float: ``st_mtime`` of the file, or ``0.0`` if not accessible.
+
+        """
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
+
     async def get_file_size(self, file_path: Path) -> int:
         """Get the size of a file in bytes.
 
